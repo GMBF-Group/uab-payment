@@ -1,0 +1,29 @@
+{
+    "name": "gmbfgp/uabpayment",
+    "description": "UAB Payment Integration Payment",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Gmbfgp\\Uabpayment\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Gmbfgp\\Uabpayment\\UabPaymentServiceProvider"
+            ]
+        }
+    },
+    "authors": [
+        {
+            "name": "pyaesone-phyo",
+            "email": "psone9921@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "require": {
+        "guzzlehttp/guzzle": "^6.5 || ^7.0"
+    }
+}
