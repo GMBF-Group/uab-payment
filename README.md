@@ -40,7 +40,7 @@ composer require gmbfgp/uabpayment
 1. Publish Config File:
 
 ```bash
-php artisan vendor:publish --provider="Gmbf\Uabpayment\UabpaymentServiceProvider"
+php artisan vendor:publish --provider="Gmbfgp\Uabpayment\UabpaymentServiceProvider"
 ```
 2. Add the following to your .env file:
 
