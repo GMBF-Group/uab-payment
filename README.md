@@ -1,6 +1,6 @@
 # 💳 UAB Payment Laravel Package
 
-A Laravel package to integrate UAB TransactEase v1.5 Payment Gateway.
+A Laravel package to integrate UAB TransactEase v1.7 Payment Gateway.
 
 ---
 
@@ -52,7 +52,10 @@ UAB_SECRET_KEY=your_secret_key
 UAB_INS_ID=your_inst_id
 UAB_CLIENT_SECRET=your_client_secret
 UAB_PAYMENT_METHOD=your_payment_method
-UAB_PAYMENT_URL=https://uat-uab.com/payment
+UAB_PAYMENT_URL=https://uat-uab.com/
+UAB_PAYMENT_CALLBACK_URL=https://uat-uab.com/your-callback
+UAB_PAYMENT_SUCCESS_URL=https://uat-uab.com/your-success
+UAB_PAYMENT_FAILED_URL=https://uat-uab.com/your-fail
 UAB_PAYMENT_EXPIRE=300
 ```
 
