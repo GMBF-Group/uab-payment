@@ -9,4 +9,7 @@ return [
         'payment_method' => env('UAB_PAYMENT_METHOD', ''),
         'payment_url' => env('UAB_PAYMENT_URL', ''),
         'payment_expire' => env('UAB_PAYMENT_EXPIRE', '300'),
+        'payment_callback_url' => env('UAB_PAYMENT_CALLBACK_URL', ''),
+        'payment_success_url' => env('UAB_PAYMENT_SUCCESS_URL', ''),
+        'payment_failed_url' => env('UAB_PAYMENT_FAILED_URL', ''),
 ];

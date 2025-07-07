@@ -53,7 +53,7 @@ UAB_INS_ID=your_inst_id
 UAB_CLIENT_SECRET=your_client_secret
 UAB_PAYMENT_METHOD=your_payment_method
 UAB_PAYMENT_URL=https://uat-uab.com/payment
-UAB_PAYMENT_EXPIRE=1800
+UAB_PAYMENT_EXPIRE=300
 ```
 
 ## 🚀 Example Usage
@@ -109,7 +109,7 @@ Uabpayment::uab(10000, [
 Example:
 ```bash
 //input
-$isValid = Uabpayment::checkCallbackSignature($request->all());
+$isValid = $uabService->checkCallbackSignature($request);
 
 //output
 true or false
@@ -122,8 +122,10 @@ true or false
 Example:
 ```bash
 //input
-$isValid = Uabpayment::checkRedirectSignature($request->all());
+$isValid = $uabService->checkRedirectSignature('GET', $request->all(), true);
 
+//status meaning
+status = true for success, false for failure.
 //output
 true or false
 ```
@@ -163,7 +165,7 @@ $signature = Uabpayment::hashSignature($signString);
 - Generates a standard message information structure for UAB API requests.
 ```bash
 //input
-$this->generateMsgInfo('LOGIN');
+$info = $uabService->generateMsgInfo('LOGIN');
 
 //output
 [
@@ -183,6 +185,12 @@ $token = $uabService->getLoginToken();
 
 //output
 'eyJhbGciOi...dXNzIn0.abc123' or null
+```
+8. ### getTransactionStatus(string $requestId): ?array
+- Fetches transaction status from UAB by RequestID.
+```bash
+//input
+$status = $uabService->getTransactionStatus('your_requestId');
 ```
 
 ## 🔒 Security Notes

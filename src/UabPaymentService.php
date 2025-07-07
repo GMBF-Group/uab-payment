@@ -2,6 +2,7 @@
 namespace Gmbfgp\Uabpayment;
 
 use GuzzleHttp\Client;
+use Illuminate\Http\Request;
 
 class UabPaymentService
 {
@@ -14,74 +15,80 @@ class UabPaymentService
     protected $payment_method;
     protected $payment_url;
     protected $payment_expire_in_second;
+    protected $callback_url;
+    protected $success_url;
+    protected $fail_url;
 
     public function __construct(){
-        $this->merchant_id = config('uabpayment.merchant_id');
-        $this->merchant_channel = config('uabpayment.merchant_channel');
-        $this->merchant_access_key = config('uabpayment.access_key');
-        $this->secret_key = config('uabpayment.secret_key');
-        $this->ins_id = config('uabpayment.ins_id');
-        $this->client_secret = config('uabpayment.client_secret');
-        $this->payment_method = config('uabpayment.payment_method');
-        $this->payment_url = config('uabpayment.payment_url');
-        $this->payment_expire_in_second = config('uabpayment.payment_expire');
+        $this->merchant_id = config('payment.uab.merchant_id');
+        $this->merchant_channel = config('payment.uab.merchant_channel');
+        $this->merchant_access_key = config('payment.uab.merchant_access_key');
+        $this->secret_key = config('payment.uab.secret_key');
+        $this->ins_id = config('payment.uab.ins_id');
+        $this->client_secret = config('payment.uab.client_secret');
+        $this->payment_method = config('payment.uab.payment_method');
+        $this->payment_url = config('payment.uab.payment_url');
+        $this->payment_expire_in_second = config('payment.uab.payment_expire_in_second');
+        $this->callback_url = config('payment.uab.payment_callback_url');
+        $this->success_url = config('payment.uab.payment_success_url');
+        $this->fail_url = config('payment.uab.payment_failed_url');
     }
 
-    public function uab($totalAmount,array $extraFields)
+    public function uab($totalAmount,array $extraFields) : array
     {
-    $baseFields = [
-        'MerchantUserID' => $this->merchant_id,
-        'AccessKey' => $this->merchant_access_key,
-        'Channel' => $this->merchant_channel,
-        'PaymentMethod' => $this->payment_method,
-        'Amount' => number_format($totalAmount, 2, '.', ''),
-        'Currency' => 'MMK',
-        'BillToAddressLine1' => '',
-        'BillToAddressLine2' => '',
-        'BillToAddressCity' => '',
-        'BillToAddressPostalCode' => '',
-        'BillToAddressState' => '',
-        'BillToAddressCountry' => 'MM',
-        'BillToForename' => '',
-        'BillToSurname' => '',
-        'BillToPhone' => '',
-        'BillToEmail' => '',
-        'ExpiredInSeconds' => $this->payment_expire_in_second,
-        'Remark' => '',
-        'UserDefined1' => '',
-        'UserDefined2' => '',
-        'UserDefined3' => '',
-        'UserDefined4' => '',
-        'UserDefined5' => '',
-        'SignedDateTime' => now()->format('Y-m-d\TH:i:s'),
-    ];
+        $baseFields = [
+            'MerchantUserID' => $this->merchant_id,
+            'AccessKey' => $this->merchant_access_key,
+            'Channel' => $this->merchant_channel,
+            'RequestID' => "",
+            'PaymentMethod' => $this->payment_method,
+            'Amount' => number_format($totalAmount, 2, '.', ''),
+            'Currency' => 'MMK',
+            'BillToAddressLine1' => '',
+            'BillToAddressLine2' => '',
+            'BillToAddressCity' => '',
+            'BillToAddressPostalCode' => '11041',
+            'BillToAddressState' => '',
+            'BillToAddressCountry' => 'MM',
+            'BillToForename' => '',
+            'BillToSurname' => '',
+            'BillToPhone' => '',
+            'BillToEmail' => '',
+            'ExpiredInSeconds' => $this->payment_expire_in_second,
+            'Remark' => '',
+            'UserDefined1' => '',
+            'UserDefined2' => '',
+            'UserDefined3' => '',
+            'UserDefined4' => '',
+            'UserDefined5' => '',
+            'SignedDateTime' => now()->format('Y-m-d\TH:i:s'),
+        ];
 
-    $fields = array_merge($baseFields, $extraFields);
-    $fields = $this->getSignatureAndSignedField($fields);
-    return $this->getFormData($fields);
-}
+        $fields = array_merge($baseFields, $extraFields);
+        $fields = $this->getSignatureAndSignedField('POST', 'Payments/Request', $fields['SignedDateTime'], $fields['RequestID'], $fields);
+        $payment_url = $this->payment_url . 'Payments/Request';
 
-    public function getSignatureAndSignedField(array $fields){
+        return $this->getFormData($fields, $payment_url);
+    }
+
+    public function getSignatureAndSignedField(string $method, string $uri, string $signedDateTime, string $requestId, array $fields) : array{
         $signedFields = array_keys($fields);
 
-        $signatureString = '';
+        $signatureString = "$method|$uri|$signedDateTime|$requestId|";
         foreach ($signedFields as $key) {
             $signatureString .= "$key=" . $fields[$key] . ",";
         }
         $signatureString = rtrim($signatureString, ',');
 
-        $fields['Signature'] = base64_encode(
-            hash_hmac('sha256', $signatureString, $this->secret_key, true)
-        );
+        $fields['Signature'] = $this->hashSignature($signatureString);
 
-        // SignedFields and Signature
         $fields['SignedFields'] = implode(',', $signedFields);
 
         return $fields;
     }
 
-    public function getFormData(array $fields){
-        $form['url'] = rtrim($this->payment_url, '/') . '/Payments/Request';
+    public function getFormData(array $fields, string $payment_url) : array {
+        $form['url'] = $payment_url;
 
         $form['values'] = '';
         foreach ($fields as $key => $value) {
@@ -90,39 +97,38 @@ class UabPaymentService
         return $form;
     }
 
-    public function checkCallbackSignature(array $data)
-    {
-        $signedFields = explode(',', $data['SignedFields']);
+    public function checkCallbackSignature(Request $request) : bool{
+        $access_key = $request->header('X-Auth-AccessKey');
+        $method = $request->method();
+        $url = $this->callback_url;
+        $timestamp = $request->header('X-Auth-Timestamp');
+        $nonce = $request->header('X-Auth-Nonce');
+        $providedSignature = $request->header('X-Auth-Signature');
+        $payloadJson = $request->getContent();
 
-        $signStringParts = [];
-        foreach ($signedFields as $field) {
-            if ($field === 'CardType' && !isset($data[$field])) {
-                continue;
-            }
-            $value = $data[$field];
-            $signStringParts[] = $field . '=' . $value;
-        }
-        $signString = implode(',', $signStringParts);
+        $signatureString = "{$method}|{$url}|{$timestamp}|{$nonce}|{$payloadJson}";
+        $generatedSignature = $this->hashSignature($signatureString);
 
-        $generatedSignature = $this->hashSignature($signString);
-
-        \Log::info("Expected Signature: $generatedSignature");
-        \Log::info("Provided Signature: " . $data['Signature']);
-
-        if (!hash_equals($generatedSignature, $data['Signature'])) {
-            \Log::error('Signature verification failed.');
+        if (!hash_equals($generatedSignature,$providedSignature)) {
+            \Log::error('Callback Signature verification failed.');
             return false;
         }
         return true;
     }
 
-    public function checkRedirectSignature(array $data){
+    public function checkRedirectSignature(string $method, array $data, bool $status) : bool{
+        $providedSignature = $data['Signature'];
         unset($data['Signature']);
 
-        $signString = $this->getSignString($data);
+        $url = $status ? $this->success_url : $this->fail_url;
+        $request_id = @$data['RequestID'];
+        $payload = $this->getSignString($data);
+
+        $signString = "{$method}|{$url}|{$request_id}|{$payload}";
+
         $hashedSignature = $this->hashSignature($signString);
 
-        if (!hash_equals($hashedSignature, $data['Signature'])) {
+        if (!hash_equals($hashedSignature, $providedSignature)) {
             \Log::error('Redirect Page Signature verification failed.');
             return false;
         }
@@ -139,10 +145,11 @@ class UabPaymentService
         return implode(',', $signStringParts);
     }
 
-    public function hashSignature(string $signString){
+    public function hashSignature($signString) : string{
         $signature = base64_encode(
             hash_hmac('sha256', $signString, $this->secret_key, true)
         );
+        \Log::info("Generated Signature: $signature");
         return $signature;
     }
 
@@ -162,7 +169,7 @@ class UabPaymentService
     }
 
     //auth token api request
-    public function getLoginToken(){
+    public function getLoginToken() : ?string{
         $msgInfo = $this->generateMsgInfo('LOGIN');
 
         $payload = [
@@ -187,62 +194,68 @@ class UabPaymentService
             $responseBody = json_decode($response->getBody(), true);
 
             if (isset($responseBody['MsgData']['AccessToken'])) {
-                \Log::info('Login token received:', $responseBody);
+                \Log::info('Uab Login token received:', $responseBody);
                 return $responseBody['MsgData']['AccessToken'];
             } else {
-                \Log::error('Login failed: No access token in response.', $responseBody);
+                \Log::error('Uab Login failed: No access token in response.', $responseBody);
                 return null;
             }
 
         } catch (\Exception $e) {
-            \Log::error('Login API request failed: ' . $e->getMessage());
+            \Log::error('Uab Login API request failed: ' . $e->getMessage());
             return null;
         }
     }
 
     //status api request
-    public function getTransactionStatus($requestId)
+    public function getTransactionStatus($requestId) : ?array
     {
-        $msgInfo = $this->generateMsgInfo('GET_TRANSACTION_STATUS');
-
-        $msgData = [
-            'RequestID'       => $requestId,
-            'MerchantUserID'  => $this->merchant_id,
-            'AccessKey'       => $this->merchant_access_key,
-        ];
-
-        $signatureString = "RequestID={$msgData['RequestID']},MerchantUserID={$msgData['MerchantUserID']},AccessKey={$msgData['AccessKey']}";
-        $signature = $this->hashSignature($signatureString);
-
-        $payload = [
-            'MsgInfo'   => $msgInfo,
-            'MsgData'   => $msgData,
-            'Signature' => $signature
-        ];
-
         try {
+            $timestamp = now()->format('Y-m-d\TH:i:s');
+
+            $msgInfo = $this->generateMsgInfo('GET_TRANSACTION_STATUS');
+            $msgId = $msgInfo['MsgID'];
+
+            $msgData = [
+                'RequestID'       => $requestId,
+                'MerchantUserID'  => $this->merchant_id,
+            ];
+
+            $payload = [
+                'MsgInfo' => $msgInfo,
+                'MsgData' => $msgData,
+            ];
+
+            $signString = "POST|api/transaction/status|{$timestamp}|{$msgId}|" . json_encode($payload);
+            $signature = $this->hashSignature($signString);
             $client = new Client();
+
             $accessToken = $this->getLoginToken();
             if (!$accessToken) {
                 \Log::error('Failed to retrieve access token for transaction status.');
                 return null;
             }
+
             $response = $client->post($this->payment_url . 'api/transaction/status', [
                 'headers' => [
                     'Content-Type'  => 'application/json',
                     'Accept'        => 'application/json',
                     'Authorization' => 'Bearer ' . $accessToken,
+                    'X-Auth-AccessKey' => $this->merchant_access_key,
+                    'X-Auth-Timestamp' => $timestamp,
+                    'X-Auth-Nonce' => $msgId,
+                    'X-Auth-Signature' => $signature
                 ],
                 'json' => $payload,
             ]);
 
             $responseBody = json_decode($response->getBody(), true);
-            \Log::info('Transaction status response:', $responseBody);
+            \Log::info('Uab Transaction status response:', $responseBody);
 
             return $responseBody;
 
         } catch (\Exception $e) {
-            \Log::error('Transaction status API failed: ' . $e->getMessage());
+            \Log::error('Uab Transaction status API failed: ' . $e->getMessage());
             return null;
         }
     }
