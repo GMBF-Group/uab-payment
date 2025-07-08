@@ -20,18 +20,18 @@ class UabPaymentService
     protected $fail_url;
 
     public function __construct(){
-        $this->merchant_id = config('payment.uab.merchant_id');
-        $this->merchant_channel = config('payment.uab.merchant_channel');
-        $this->merchant_access_key = config('payment.uab.merchant_access_key');
-        $this->secret_key = config('payment.uab.secret_key');
-        $this->ins_id = config('payment.uab.ins_id');
-        $this->client_secret = config('payment.uab.client_secret');
-        $this->payment_method = config('payment.uab.payment_method');
-        $this->payment_url = config('payment.uab.payment_url');
-        $this->payment_expire_in_second = config('payment.uab.payment_expire_in_second');
-        $this->callback_url = config('payment.uab.payment_callback_url');
-        $this->success_url = config('payment.uab.payment_success_url');
-        $this->fail_url = config('payment.uab.payment_failed_url');
+        $this->merchant_id = config('uabpayment.merchant_id');
+        $this->merchant_channel = config('uabpayment.merchant_channel');
+        $this->merchant_access_key = config('uabpayment.merchant_access_key');
+        $this->secret_key = config('uabpayment.secret_key');
+        $this->ins_id = config('uabpayment.ins_id');
+        $this->client_secret = config('uabpayment.client_secret');
+        $this->payment_method = config('uabpayment.payment_method');
+        $this->payment_url = config('uabpayment.payment_url');
+        $this->payment_expire_in_second = config('uabpayment.payment_expire');
+        $this->callback_url = config('uabpayment.payment_callback_url');
+        $this->success_url = config('uabpayment.payment_success_url');
+        $this->fail_url = config('uabpayment.payment_failed_url');
     }
 
     public function uab($totalAmount,array $extraFields) : array

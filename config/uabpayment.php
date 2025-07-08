@@ -1,7 +1,7 @@
 <?php
 return [
         'merchant_id' => env('UAB_MERCHANT_ID', ''),
-        'access_key' => env('UAB_ACCESS_KEY', ''),
+        'merchant_access_key' => env('UAB_ACCESS_KEY', ''),
         'merchant_channel' => env('UAB_MERCHANT_CHANNEL', ''),
         'secret_key' => env('UAB_SECRET_KEY', ''),
         'ins_id' => env('UAB_INS_ID', ''),
